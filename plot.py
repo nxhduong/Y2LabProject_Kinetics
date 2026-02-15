@@ -1,179 +1,120 @@
-# These libraries contain useful tools we will use to load, processes and plot data
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from os.path import splitext
 from inspect import getfullargspec
-from glob import glob
-import math
+# from glob import glob
+import os
+import subprocess
+from datetime import datetime
 
-# This allows us to pass arguments to our program
-from sys import argv
-
-# ----------------------------- FITTING OPTIONS --------------------------------------------
-
-# Set fit to True to calculate a fit to the (possibly manipulated) data
-fit = True
+# ----------------------------- FITTING OPTIONS --------------------------------
 
 # Define the form of the function to be fit to the data (default: linear m*x+c)
-quadratic = lambda x, b, c, k_obs: b - c * math.exp(-k_obs * x)
-
-# You can add your own function of any type you like here.
+fit_func = lambda x, b, c, k_obs: b - c * np.exp(-k_obs * x)
 # Note that the first input to the function MUST be x.
 
-
-# ----------------------------- OUTPUT OPTIONS --------------------------------------------
-# Set output to True to write the parameters of the line of best fit
-# of every processed data file to a single external file.
-output = False
-
-# Set the name of this external file
-output_fname = 'fit_parameters'
-
-# If we are not performing a fit, there will be nothing to output!
-if fit == False:
-    output = False
-
-# Add a unique suffix to the name of each output file
-# If you are fitting the data, this is the name of the fitting function by default
-# Uncomment the line below to override this
-
-# suffix = "_suffix"
-
-# ------------------------------------------------------------------------------------------
-
-# ----------------------------- HANDLE RUN-TIME ARGUMENTS ----------------------------------
-
-# The first argument is always the name of the program; we will remove it
-args = argv[1:]
-
-# The last argument tells us which fitting function (defined above) to use.
-func_name = quadratic
-'''
-try:
-	func = eval(func_name)
-	# Since you've provided an acceptable fitting function, we assume you want to fit
-	fit = True
-	suffix = '_'+func_name
-	# Since you've provided an acceptable fitting function, we assume you want to output fitting parameters
-	output = True
-	print(f'A best fit to the data will be calculated using the function \"{func_name}\"')
-except:
-	if fit == True:
-        print("\nYou have either not provided a fitting function, or provided the incorrect name for a fitting function.")
-        print("Since you've requested a fit (fit = True), defaulting to a linear line of best fit.\n")
-        func_name = "linear"
-        func = eval(func_name)
-        suffix = '_'+func_name
-	else:
-        suffix = ''
-'''
-# ------------------------------------------------------------------------------------------
-
 # We need to collect the fit data for each file we process
-if output:
-    fit_data = []
-    data_fnames = []
-
-# The first argument is always the name of the program; we will remove it
-# If the filename is not a csv file, it will be skipped
-args = [f for l in argv[1:] for f in glob(l) if f[-4:] == '.csv']
-nfiles=len(args)
-print('A total of '+str(nfiles)+' csv files will be processed. Any other files will be ignored.')
+fit_data = []
+data_fnames = []
 
 # We will create a plot from every csv file passed to the program
-i = 0
-for fname in args:
-    i=i+1
-    print(f"Processing file {i} of {nfiles} - {fname}")
+plt.rcParams.update({"font.size": 12})
+
+for file in os.listdir(os.getcwd()):
+    fname = os.fsdecode(file)
     
-    # Load the data from the csv file. 
-    try:
-        data = np.loadtxt(fname,delimiter=",",skiprows=1)
-    except Exception as error:
-        print("Could not process file",fname,". It has been skipped.\nThe error from Python is:")
-        print(error.args[0])
-        continue
-    
-    # Choose which columns of data we want to use as our x and y values.
-    # Note that the column indexes start from 0, not 1.    
-    x = data[:,0]
-    y = data[:,1]
-    
-    # Add the name of each file we will process to a list
-    if output: data_fnames.append(fname)
-
-    # ----- DATA MANIPULATION --------------------------------------------------------------
-    # Uncomment the relevent line from this section or add your own code
-
-    # Example: Convert time from minutes to seconds
-    # x = x*60
-
-    # Example: Convert y to ln(y)
-    # y = np.log(y) 
-
-    # --------------------------------------------------------------------------------------
-
-    # Calculate a line of best fit, if fit is true. The best fit parameters are stored in variable fit_params.
-    if fit:
+    if fname.endswith(".csv"):    
+        # Load the data from the csv file. 
         try:
-            fit_params, pcov = curve_fit(func,x,y)
-            if output: fit_data.append(fit_params)
+            data = np.loadtxt(fname, delimiter = ",", skiprows = 1)
+        except Exception as error:
+            print("Could not process file", fname, ". It has been skipped.\nError from Python:")
+            print(error.args[0])
+            continue
+        
+        # Choose which columns of data we want to use as our x and y values.
+        # Note that the column indexes start from 0, not 1.    
+        x = data[:, 0]
+        y = data[:, 1]
+
+        # ----- DATA MANIPULATION ----------------------------------------------
+
+        # Example: Convert time from minutes to seconds
+        # x = x*60
+
+        # Example: Convert y to ln(y)
+        # y = np.log(y) 
+
+        # ----------------------------------------------------------------------
+
+        # Calculate a line of best fit. The best fit parameters are stored in variable fit_params.
+        try:
+            fit_params, pcov = curve_fit(fit_func, x, y)
+            fit_data.append(fit_params)            
         except Exception as error:
             print("Could not fit a curve to your data. Check the form of func, and your data. \nThe error from Python is:")
             print(error.args[0])
-            fit = False
-    
-    # Create the figure
-    fig = plt.figure()
-    # Create the "Axes", which contains information for the graph
-    ax = plt.axes()
+            
+        # Add the name of each file we will process to a list
+        data_fnames.append(fname)
+        
+        fig = plt.figure()
+        fig.set_size_inches(16, 10)
+        ax = plt.axes()
 
-    # This creates a line graph, adding a straight line between each point in the input data file
-    # Replace plot with scatter for a scatter graph
-    ax.plot(x,y,label='Data')
+        # This creates a line graph, adding a straight line between each point in the input data file
+        # Replace plot with scatter for a scatter graph
+        ax.scatter(x, y)
+        
+        #----- CALCULATE MEAN SQUARE ERROR--------------------------------------
 
-    # Add a line of best fit to the plot, if fit is true
-    if fit: ax.plot(x,func(x,*fit_params),label='Line of best fit')
-
-    # ----- PLOTTING DETAILS ---------------------------------------------------------------
-    # Modify the following lines to be appropriate for the graph you are currently plotting
-
-    # Add labels to the x and y axes
-    ax.set_xlabel("X axis / units")
-    ax.set_ylabel("Y axis / units")
-    
-    # Set the maximum values of the x and y axes
-    # ax.set_xlim([0,200])
-    # ax.set_ylim([0.0,1.0])
-
-    # Show a legend
-    ax.legend()
-
-    # Add a title to the graph
-    ax.set_title("Title")
-
-    #----- CALCULATE MEAN SQUARE ERROR------------------------------------------------------
-
-    # Make a list of "best fit" values which each correspond to a temperature value   
-    if fit:
-    
+        # Make a list of "best fit" values which each correspond to a value   
+        
         # Calculate the value of the line of the best fit at every value of x
-        y_fit = func(x,*fit_params)
+        y_fit = fit_func(x, *fit_params)
         # Calculate the root mean square error in the line of best fit.
-        rmse = np.square(y-y_fit)
+        rmse = np.square(y - y_fit)
         rmse = np.average(rmse)
         rmse = np.sqrt(rmse)
 
-        print("The root mean square error for this fit is", rmse)
+        # Add a line of best fit to the plot, if fit is true
+        # COMMENT THIS LINE (ADD "#" BEFORE THIS LINE) to remove line of best fit
+        ax.plot(
+            x, fit_func(x,*fit_params), 
+            label = "RMSE={}\nb={};c={}\nk_obs={}\n".format(rmse, *fit_params), color = "red"
+        )
 
-    # --------------------------------------------------------------------------------------
+        # ----- PLOTTING DETAILS -----------------------------------------------
+        # Modify the following lines to be appropriate for the graph you are currently plotting
 
-    fig.savefig(splitext(fname)[0]+suffix+".png")
-    plt.close()
+        # Add labels to the x and y axes
+        ax.set_xlabel("sec")
+        ax.set_ylabel("Abs")
+        
+        # Set the maximum values of the x and y axes
+        # ax.set_xlim([0,200])
+        # ax.set_ylim([0.0,1.0])
+
+        ax.legend()
+        ax.set_title(fname)
+
+        # ----------------------------------------------------------------------
+        img_name: str = os.path.splitext(fname)[0] + ".png"
+        fig.savefig(img_name)
+        
+        try:
+            subprocess.Popen(["explorer", img_name])
+        except Exception as err:
+            print("Error trying to open image" + str(err))
+        
+        plt.close()
 
 # Output the parameters of the line of best fit for every file processed
-if output and len(data_fnames)>0:
-    params = getfullargspec(func)[0][1:]
-    np.savetxt(output_fname+suffix+'.csv',np.vstack((data_fnames,np.array(fit_data).T)).T,delimiter=',',header='File Name,'+','.join(params),comments='',fmt="%s")
-if nfiles > 0: print('All files processed')
+# if len(data_fnames)>0:
+np.savetxt(
+    "plotpy_out_{}.csv".format(str(datetime.now()).replace("-", "_").replace(" ", "_").replace(":", "_").split(".")[0]), 
+    np.vstack((data_fnames, np.array(fit_data).T)).T, delimiter = ",", header = "File Name," + ",".join(getfullargspec(fit_func)[0][1:]), 
+    comments = "", fmt = "%s"
+    )
+
+print("Done.")

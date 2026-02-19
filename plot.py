@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from inspect import getfullargspec
-# from glob import glob
 import os
 import subprocess
 from datetime import datetime

@@ -38,10 +38,6 @@ for file in os.listdir(os.getcwd()):
         y = data[:, 1]
 
         # ----- DATA MANIPULATION ----------------------------------------------
-
-        # Example: Convert time from minutes to seconds
-        # x = x*60
-
         # Example: Convert y to ln(y)
         # y = np.log(y) 
 
@@ -68,7 +64,7 @@ for file in os.listdir(os.getcwd()):
         
         #----- CALCULATE MEAN SQUARE ERROR--------------------------------------
 
-        # Make a list of "best fit" values which each correspond to a value   
+        # Make a list of "best fit" values, each corresponding to a value   
         
         # Calculate the value of the line of the best fit at every value of x
         y_fit = fit_func(x, *fit_params)
@@ -86,15 +82,8 @@ for file in os.listdir(os.getcwd()):
 
         # ----- PLOTTING DETAILS -----------------------------------------------
         # Modify the following lines to be appropriate for the graph you are currently plotting
-
-        # Add labels to the x and y axes
         ax.set_xlabel("sec")
         ax.set_ylabel("Abs")
-        
-        # Set the maximum values of the x and y axes
-        # ax.set_xlim([0,200])
-        # ax.set_ylim([0.0,1.0])
-
         ax.legend()
         ax.set_title(fname)
 

@@ -1,4 +1,4 @@
-# Y2LabProject_Kinetics
+# Y2P1_LabGroupProject_Kinetics
 Plot kinetics data fitted to the equation:
 ```
 A = b - c * e ^ (-k_obs * t)
